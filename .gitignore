@@ -1,0 +1,34 @@
+# Models directory (users place their own model weights here)
+# Ignore everything inside models/ except README.md
+models/*
+!models/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.venv/
+.venv/
+venv/
+env/
+
+# Cache
+.cache/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Plans and working notes — local scratchpad, never commit
+plans/
+
+# Internal tracking (not for public repo)
+TODO.md
+WORKING_NOTES.md
