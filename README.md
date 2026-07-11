@@ -258,14 +258,12 @@ The companion guide **[`QWEN-LOCAL-GUIDE.md`](QWEN-LOCAL-GUIDE.md)** covers ever
 |-----------|-------|-------|
 | **Temperature (structured)** | 0.3–0.4 | With `guided_json` (xgrammar); 0.6 without |
 | **Temperature (creative)** | 0.8–0.9 | Sweet spot for narrative/roleplay |
-| **Temperature (floor)** | **≥0.6** | MANDATORY — below this, thinking degrades |
 | **Thinking mode** | **ON** (default) | Critical for proper function; disable only for latency-sensitive extraction |
 | **`presence_penalty`** | **0.0** | MANDATORY — non-zero destroys JSON output |
 | **`top_p`** | 0.90–0.95 | Standard range |
-| **`top_k`** | 20 | Unsloth recommendation |
+| **`top_k`** | 20 | Official recommendation across all modes |
 | **Structured output** | `guided_json` (xgrammar) | ~100% Pydantic validity vs. ~25% with `json_object` alone |
-| **Max concurrency** | 2 | Degradation at concurrency=3 |
-| **`max_tokens`** | ≥8192 | Minimum for structured output |
+| **`max_tokens`** | Sufficient headroom needed | Too low truncates thinking output before response is generated — allow headroom for thinking + response. No hard minimum; context-dependent |
 | **Tool call parser** | `hermes` or `qwen3_xml` | With `--enable-auto-tool-choice` |
 | **Reasoning parser** | `qwen3` | Required for thinking mode |
 
@@ -301,12 +299,11 @@ setup, and common deployment pitfalls.
 | `--structured-outputs-config.backend` | `xgrammar` | Explicit backend — don't rely on auto |
 | `--structured-outputs-config.enable_in_reasoning` | `True` | Allow guided_json + thinking (v0.11.2+) |
 | `--max-model-len` | 148000 (16-bit KV) / 262144 (8-bit KV) | [See KV-cache tradeoff](#kv-cache-quantization--context-length) |
-| `--gpu-memory-utilization` | 0.85 | Leave 15% headroom |
-| `--max-num-seqs` | 2 | Qwen 27B concurrency limit |
+| `--gpu-memory-utilization` | Balance against batch size | Higher utilization reduces headroom for KV cache growth — too high causes OOM on long contexts |
 | `--enable-prefix-caching` | On | Massive TTFT reduction with stable prompts |
 | `--enable-auto-tool-choice` | On (if using tools) | Required for tool calling |
 | `--tool-call-parser` | `hermes` (stable) or `qwen3_xml` (newer) | Tool call format parser |
-| `--speculative-config` | MTP-1 for latency-focused | 160 t/s boost on RTX 6000 |
+| `--speculative-config` | `{"method": "mtp", "num_speculative_tokens": 2}` | For latency-focused serving |
 | `--kv-cache-dtype` | `auto` (16-bit) / `fp8_e4m3` (8-bit) | 8-bit = ~2× context capacity |
 
 ### Structured Output Quick Reference
@@ -330,7 +327,7 @@ outlines (deprecated)               ← AVOID: FSM-based, struggles with nested 
 
 1. **Missing `--reasoning-parser qwen3`** — thinking mode silently broken
 2. **`guided_json` without schema in prompt** — vLLM doesn't inject schema into chat template
-3. **`gpu-memory-utilization` too high** — OOM on long contexts (0.85 max)
+3. **`gpu-memory-utilization` too high** — OOM on long contexts — balance against batch size; higher utilization reduces headroom for KV cache growth
 4. **Dynamic system prompts** — breaks prefix caching; keep stable across turns
 5. **`json_object` alone for critical schemas** — 25% validity vs 100% with `guided_json`
 
