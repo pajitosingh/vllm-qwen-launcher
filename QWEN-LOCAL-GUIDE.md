@@ -5,7 +5,7 @@ production pipelines, benchmarks, and community research. Vision and temperature
 guidance verified against official Qwen docs, HuggingFace model cards, vLLM
 recipes, and community benchmarks (July 2026).
 
-Full research sources at [`plans/RESEARCH-qwen-vision-thinking-claims.md`](plans/RESEARCH-qwen-vision-thinking-claims.md).
+Claims verified against official Qwen docs, HuggingFace model cards, and vLLM documentation.
 
 ---
 
@@ -200,8 +200,8 @@ dedicated VL model with separate Instruct/Thinking checkpoints). The HuggingFace
 model card for Qwen3.6-27B runs all vision benchmarks in thinking mode only,
 with no non-thinking vision numbers published.
 
-**This is an open question worth benchmarking locally.** See [TODO.md](TODO.md) for
-the deferred benchmark task.
+**This is an open question worth benchmarking locally** — no published A/B exists for
+this specific model on vision tasks.
 
 ### vLLM Vision Configuration
 
@@ -253,8 +253,7 @@ with tempfile.NamedTemporaryFile(suffix=".json") as f:
     )
 ```
 
-See [§1 Quick Facts](#1-quick-facts) for architecture details, and the full research
-report at [`plans/RESEARCH-qwen-vision-thinking-claims.md`](plans/RESEARCH-qwen-vision-thinking-claims.md).
+See [§1 Quick Facts](#1-quick-facts) for architecture details.
 
 ---
 
@@ -897,4 +896,3 @@ Official Qwen 3.6 tokenizer template
 - [arxiv 2606.09395](https://arxiv.org/abs/2606.09395) — Empirical Study for Structured Output Control (MoE limitation finding, June 2026)
 - [BoundaryML: Structured Outputs Create False Confidence](https://boundaryml.com/blog/structured-outputs-create-false-confidence)
 - [Tianpan.co: JSON Mode Won't Save You](https://tianpan.co/blog/2026-04-09-structured-output-failures-production-llm)
-- [Full research report: plans/RESEARCH-qwen-vision-thinking-claims.md](plans/RESEARCH-qwen-vision-thinking-claims.md)
