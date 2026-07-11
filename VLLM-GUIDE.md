@@ -63,13 +63,13 @@ vllm serve Qwen/Qwen3.6-27B \
 | `--structured-outputs-config.enable_in_reasoning True` | **Required** | Allow `guided_json` + thinking simultaneously (v0.11.2+). |
 | `--max-model-len N` | 148000 (16-bit KV) / 262144 (8-bit KV) | Context window. [See §4](#4-performance-tuning) for KV-cache tradeoff. |
 | `--tensor-parallel-size N` | GPU count | Auto-detected by `vllm_launch.sh`. |
-| `--gpu-memory-utilization F` | 0.85 | Leave 15% headroom for KV-cache spikes. |
+| `--gpu-memory-utilization F` | Balance against batch size | Higher utilization reduces headroom for KV-cache growth — too high risks OOM on long contexts |
 | `--enable-prefix-caching` | On | Massive TTFT reduction with stable prompts. |
 | `--enable-auto-tool-choice` | On (if using tools) | Required for tool calling. |
 | `--tool-call-parser hermes` | `hermes` or `qwen3_xml` | Parser for tool call format. [See §5](#5-tool-calling-setup). |
 | `--chat-template FILE` | qwen36-chat-Pajito-optimized.jinja | Bundled optimized template. |
 | `--default-chat-template-kwargs JSON` | See above | Server-wide template defaults. |
-| `--max-num-seqs N` | 2 (Qwen 27B) | [See §4](#concurrency). |
+| `--max-num-seqs N` | Start at 2, tune for your workload | Concurrency-dependent — [See §4](#concurrency) |
 | `--max-num-batched-tokens N` | 2048 | Batched prefill tokens. |
 | `--speculative-config JSON` | MTP for speed | [See §4](#mtp-speculative-decoding). |
 | `--kv-cache-dtype TYPE` | `auto` | [See §4](#kv-cache-quantization). |
@@ -277,16 +277,18 @@ Qwen 3.6 supports Multi-Token Prediction:
 | Latency-focused | MTP-1 ON, prefix caching OFF | Low concurrency, interactive use |
 | Throughput-focused | MTP OFF, prefix caching ON | High concurrency, batch processing |
 
-- MTP-1: 160 t/s on RTX 6000 for 27B
+- MTP-1 latency benefits scale well for 27B-class models on high-end GPUs
 - MTP-1 for AMD GPUs: under development
 
 ### Concurrency
 
-**Max concurrency = 2** for Qwen 3.6 27B on vLLM. At concurrency=3, JSON success
-drops from 100% to 90% (empirically verified). Keep parallel calls capped at 2.
+**Concurrency guidance:** In testing, JSON success dropped from 100% at serial
+to ~90% at concurrency=3 with Qwen 3.6 27B on vLLM. Start with `--max-num-seqs 2`
+and tune for your specific workload — results will vary with model size, context
+length, and hardware.
 
 ```bash
---max-num-seqs 2
+--max-num-seqs 2  # starting point — tune for your workload
 ```
 
 ### `max-model-len` vs. VRAM
@@ -304,11 +306,12 @@ For Qwen 3.6 27B at FP8 weights:
 ### `gpu-memory-utilization`
 
 ```bash
---gpu-memory-utilization 0.85
+--gpu-memory-utilization 0.85  # starting point — adjust for your setup
 ```
 
-Leave 15% headroom. vLLM's memory estimation isn't perfect — setting this to 0.95
-or higher risks OOM on long contexts or large batches.
+Higher utilization leaves less room for KV-cache growth. There's no universal
+"right" value — it depends on your context length, batch size, and model size.
+Start at 0.85 and adjust based on OOM behavior at your typical workloads.
 
 ---
 
@@ -406,13 +409,12 @@ states. Be exact with parameter formatting — no extra spaces in JSON strings.
 | 2 | **Bare `enable_thinking`** | Silently fails on vLLM | Nest under `chat_template_kwargs` | [§6](#6-chat-templates--reasoning) |
 | 3 | **`anyOf` in Pydantic schemas** | Breaks outlines/xgrammar on complex schemas | Flatten with sentinel booleans | [§3](#schema-design-for-vllm) |
 | 4 | **`json_object` alone for schemas** | ~25% Pydantic validity | Use `guided_json` or `structured_outputs` | [§3](#the-three-mechanisms) |
-| 5 | **Concurrency > 2** | JSON success 100%→90% | `--max-num-seqs 2` | [§4](#concurrency) |
-| 6 | **`gpu-memory-utilization` too high** | OOM on long context | Max 0.85 | [§4](#gpu-memory-utilization) |
-
 ### 🟡 Important — Will Degrade Quality
 
 | # | Pitfall | What Happens | Fix | See |
 |---|---------|-------------|-----|-----|
+| 5 | **Concurrency too high** | JSON success drops (100%→90% at concurrency=3) | Start at `--max-num-seqs 2`, tune for your workload | [§4](#concurrency) |
+| 6 | **`gpu-memory-utilization` too high** | OOM on long context | Balance against batch size — start at 0.85, adjust for your setup | [§4](#gpu-memory-utilization) |
 | 7 | **Not extracting `reasoning_content`** | JSON lands in wrong field | Check both fields (vLLM #41132) | [§3](#structured-output--thinking-mode) |
 | 8 | **Auto backend selection** | Changes between releases | Explicitly set `xgrammar` | [§3](#backend-selection) |
 | 9 | **Dynamic system prompts** | Breaks prefix caching | Keep stable across turns | [§4](#prefix-caching) |

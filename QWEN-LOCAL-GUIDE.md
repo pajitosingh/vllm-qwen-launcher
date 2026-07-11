@@ -665,16 +665,18 @@ conversation history, helping the model maintain coherent reasoning chains.
 
 ### Concurrency & Performance
 
-**Concurrency limit = 2 maximum** for local Qwen 3.6 27B on vLLM. Benchmarks showed
-100% JSON success at serial, dropping to 90% at concurrency=3. Keep parallel calls
-capped at 2.
+**Concurrency guidance:** In testing with local Qwen 3.6 27B on vLLM, JSON
+success was 100% at serial, dropping to ~90% at concurrency=3. Start with
+2 parallel calls and tune for your specific workload, hardware, and context length.
 
-**`max_tokens` ≥ 8192 minimum** for structured output tasks. Up to **64K reliable**
-(model supports up to 80K). Truncated mid-JSON = total response loss.
+**`max_tokens`** should have sufficient headroom for structured output tasks —
+truncated mid-JSON means total response loss. No hard minimum; 8192 is a
+reasonable starting point for most schemas, but complex outputs may need more.
+The model supports up to 80K (reliable to 64K).
 
 ### Max Tokens for Agentic Output
 
-- **Minimum: 8192** for structured output tasks
+- **Starting point: 8192** for typical structured output tasks (no hard minimum — context-dependent)
 - **Up to 24K** for large data outputs
 - **Reliable ceiling: 64K** (model supports up to 80K)
 
@@ -826,17 +828,17 @@ Official Qwen 3.6 tokenizer template
 
 | # | Pitfall | What Happens | Fix | See |
 |---|---------|-------------|-----|-----|
-| 1 | **Greedy decoding (temp=0)** | Endless repetitions, performance degradation — official warning | Always use ≥0.6 for thinking (1.0 general, 0.6 coding); 0.7 for non-thinking | [§3](#3-temperature-guide) |
+| 1 | **Greedy decoding (temp=0)** | Endless repetitions, performance degradation — official warning | Use official tiers: 1.0 (general thinking), 0.6 (precise coding), 0.7 (non-thinking). With `guided_json`/xgrammar, 0.3–0.4 is also safe | [§3](#3-temperature-guide) |
 | 2 | **`presence_penalty=1.5`** | Corrupts JSON structure — the API default is wrong for structured tasks | Use 0.0 for structured JSON | [§3](#3-temperature-guide) |
 | 3 | **Bare `enable_thinking`** | Silently fails on vLLM | Nest under `chat_template_kwargs` | [§4](#4-thinking-mode) |
 | 4 | **`anyOf` in Pydantic schemas** | Breaks outlines backend | Flatten with sentinel booleans, use xgrammar | [§5](#5-structured-json-output) |
-| 5 | **Concurrency > 2** | JSON success drops 100%→90% | Cap at 2 parallel calls | [§6](#6-agentic--tool-calling) |
-| 6 | **Missing `--reasoning-parser qwen3`** | Thinking mode won't work | Always include in serve command — see [`VLLM-GUIDE.md`](VLLM-GUIDE.md) | [§4](#4-thinking-mode) |
+| 5 | **Missing `--reasoning-parser qwen3`** | Thinking mode won't work | Always include in serve command — see [`VLLM-GUIDE.md`](VLLM-GUIDE.md) | [§4](#4-thinking-mode) |
 
 ### 🟡 Important — Will Degrade Quality
 
 | # | Pitfall | What Happens | Fix | See |
 |---|---------|-------------|-----|-----|
+| 6 | **Concurrency too high** | JSON success drops 100%→90% at concurrency=3 | Start at 2 parallel calls, tune for your workload | [§6](#6-agentic--tool-calling) |
 | 7 | **Not extracting `reasoning_content`** | JSON may land in wrong field — check `content`, `reasoning_content`, AND `reasoning` | Check all three fields (vLLM #41132) | [§4](#4-thinking-mode) |
 | 8 | **Relying on `json_object` alone** | ~25% vs 100% validity with guided | Use `guided_json`/`structured_outputs` for critical schemas | [§5](#5-structured-json-output) |
 | 9 | **Auto backend selection** | Changes between vLLM releases | Explicitly set `xgrammar` or `guidance` | [§5](#5-structured-json-output) |

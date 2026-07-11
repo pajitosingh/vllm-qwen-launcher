@@ -258,8 +258,8 @@ The companion guide **[`QWEN-LOCAL-GUIDE.md`](QWEN-LOCAL-GUIDE.md)** covers ever
 |-----------|-------|-------|
 | **Temperature (structured)** | 0.3–0.4 | With `guided_json` (xgrammar); 0.6 without |
 | **Temperature (creative)** | 0.8–0.9 | Sweet spot for narrative/roleplay |
-| **Thinking mode** | **ON** (default) | Critical for proper function; disable only for latency-sensitive extraction |
-| **`presence_penalty`** | **0.0** | MANDATORY — non-zero destroys JSON output |
+| **Thinking mode** | **ON** (default) | Recommended default; disable only for latency-sensitive extraction tasks |
+| **`presence_penalty`** | **0.0** | Use 0.0 for structured JSON — non-zero values corrupt JSON output |
 | **`top_p`** | 0.90–0.95 | Standard range |
 | **`top_k`** | 20 | Official recommendation across all modes |
 | **Structured output** | `guided_json` (xgrammar) | ~100% Pydantic validity vs. ~25% with `json_object` alone |
@@ -276,7 +276,7 @@ apply. This is what enables the 100% JSON reliability benchmarks.
 
 ### The Most Common Mistakes
 
-1. **Temperature < 0.6** — thinking quality collapses
+1. **Temperature = 0 (greedy decoding)** — causes endless repetitions in thinking mode. Use the official recommendations: 1.0 (general thinking), 0.6 (precise coding), 0.7 (non-thinking). With `guided_json`/xgrammar, 0.3–0.4 is also safe
 2. **`presence_penalty=1.5`** — destroys JSON output (use 0.0)
 3. **Bare `enable_thinking` in `extra_body`** — silently fails on vLLM; must nest under `chat_template_kwargs`
 4. **`anyOf` in Pydantic schemas** — breaks outlines backend; flatten with sentinel booleans
