@@ -48,6 +48,12 @@ and all benchmarks were developed on this configuration:
 Single 24 GB GPU users: use AWQ 4-bit quantization. You'll still get excellent JSON
 reliability and thinking quality — the 27B dense architecture shines at any quant.
 
+Qwen's FP8 checkpoint uses the e4m3 format (4 exponent bits, 3 mantissa bits), which
+trades some dynamic range for better mantissa precision — the right call for inference,
+especially on code where weight fidelity matters. vLLM handles this automatically with
+no flag needed; on Ampere GPUs like the RTX 3090, it runs as W8A16 via Marlin kernels
+(FP8 e4m3 weight storage, FP16 compute).
+
 ### KV-Cache Quantization & Context Length
 
 The KV-cache stores attention keys/values for all previous tokens. Its precision

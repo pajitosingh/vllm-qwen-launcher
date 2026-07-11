@@ -246,6 +246,8 @@ reasoning = getattr(response.choices[0].message, "reasoning_content", None)
 
 **Rule of thumb:** Default to 16-bit (best quality for agentic coding). Switch to
 8-bit only when you need >148K context. The launcher's `--kv-dtype` flag controls this.
+FP8 throughout (both weights and KV-cache) defaults to e4m3, which gives better mantissa
+precision than e5m2 — the latter is a training-gradient format, not used for inference.
 
 ### Prefix Caching
 

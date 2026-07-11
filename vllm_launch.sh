@@ -9,7 +9,6 @@
 #   • Interactive overrides for context length, max-seqs, KV-cache dtype,
 #     and speculative decoding tokens
 #   • Stale-process cleanup (pre-flight + post-exit cooldown)
-#   • Optional LMCache CPU offloading
 #   • Pluggable chat template (defaults to the bundled qwen36-chat-Pajito-optimized.jinja)
 #
 # USAGE:
@@ -53,8 +52,6 @@
 #   --no-prefix-cache     Disable prefix caching
 #   --no-chunked-prefill Disable chunked prefill
 #   --enforce-eager       Disable torch.compile
-#   --lmcache             Enable LMCache CPU offloading
-#   --lmcache-config FILE LMCache config YAML (default: $HOME/.config/lmcache/cpu_offload.yaml)
 #   --cache-dir DIR       Cache directory for vLLM/torch/triton (default: $HOME/.cache/vllm-launcher)
 #   --yes / -y            Accept all defaults, run non-interactively
 #   --dry-run             Print the vllm command without launching
@@ -83,8 +80,6 @@ MAX_SEQS_OVERRIDE=""
 MAX_MODEL_LEN_OVERRIDE=""
 KV_DTYPE="auto"
 SPEC_TOKENS="3"
-USE_LMCACHE=0
-LMCACHE_CONFIG=""
 CACHE_DIR="${CACHE_DIR:-$HOME/.cache/vllm-launcher}"
 MAX_BATCHED_TOKENS="2048"
 YES_MODE=0
@@ -126,8 +121,6 @@ while [[ $# -gt 0 ]]; do
         --no-prefix-cache) USE_PREFIX_CACHE=0; shift ;;
         --no-chunked-prefill) USE_CHUNKED_PREFILL=0; shift ;;
         --enforce-eager)   ENFORCE_EAGER=1; shift ;;
-        --lmcache)         USE_LMCACHE=1; shift ;;
-        --lmcache-config)  LMCACHE_CONFIG="$2"; USE_LMCACHE=1; shift 2 ;;
         --cache-dir)       CACHE_DIR="$2"; shift 2 ;;
         --yes|-y)          YES_MODE=1; shift ;;
         --dry-run)         DRY_RUN=1; shift ;;
@@ -548,18 +541,6 @@ export VLLM_COMPILE_CACHE_SAVE_FORMAT="${VLLM_COMPILE_CACHE_SAVE_FORMAT:-unpacke
 export TORCHINDUCTOR_FX_GRAPH_CACHE="${TORCHINDUCTOR_FX_GRAPH_CACHE:-1}"
 export VLLM_COMPILE_DEPYF="${VLLM_COMPILE_DEPYF:-0}"
 
-if [ "$USE_LMCACHE" == "1" ]; then
-    if [ -z "$LMCACHE_CONFIG" ]; then
-        LMCACHE_CONFIG="$HOME/.config/lmcache/cpu_offload.yaml"
-    fi
-    export LMCACHE_CONFIG_FILE="$LMCACHE_CONFIG"
-    export LMCACHE_USE_EXPERIMENTAL=True
-    echo -e "🧠 ${C_CYAN}LMCache CPU offloading active ($LMCACHE_CONFIG)${C_RESET}"
-else
-    unset LMCACHE_CONFIG_FILE 2>/dev/null || true
-    unset LMCACHE_USE_EXPERIMENTAL 2>/dev/null || true
-fi
-
 # Served model name
 if [ -z "$SERVED_NAME" ]; then
     SERVED_NAME="$MODEL_NAME"
@@ -610,13 +591,6 @@ fi
 if [[ "$USE_SPEC" == "1" && "$SPEC_TOKENS" -gt 0 ]]; then
     VLLM_ARGS+=(
         --speculative-config "{\"method\": \"mtp\", \"num_speculative_tokens\": $SPEC_TOKENS}"
-    )
-fi
-
-if [ "$USE_LMCACHE" == "1" ]; then
-    VLLM_ARGS+=(
-        --disable-hybrid-kv-cache-manager
-        --kv-transfer-config '{"kv_connector":"LMCacheConnectorV1", "kv_role":"kv_both"}'
     )
 fi
 
