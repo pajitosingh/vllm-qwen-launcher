@@ -19,11 +19,11 @@ variants. Has three unique features no community template matches — even frogg
 
 ### Pajito vs Community Templates
 
-| Feature | Pajito (v5) | froggeric v21 | allanchan339 |
+| Feature | Pajito (v6) | froggeric v21 | allanchan339 |
 |---------|:---------:|:------------:|:------------:|
 | **`ensure_ascii=False`** (100% cache hit) | ✅ | ❌ — bare `tojson` | ✅ (tools) |
 | **Self-healing unclosed `<think>`** | ✅ (inherited) | ❌ | ✅ (origin) |
-| **JSON string un-packing** (`from_json`) | ✅ (inherited) | ❌ | ✅ (origin) |
+| **JSON string un-packing** (`from_json`) | ✅ guarded — only on `{...}`-shaped args | ❌ — emits raw | ✅ (origin, unguarded) |
 | **Tool error detection** (deterministic) | ✅ opt-in | ⚠️ heuristic | ❌ |
 | **`auto_disable_thinking_with_tools`** | ✅ | ❌ | ❌ |
 | **Thinking-OFF safe gen prompt** | ✅ | ⚠️ (v21.2 partial) | ❌ open `<think>` |
@@ -31,6 +31,8 @@ variants. Has three unique features no community template matches — even frogg
 | **Empty-think suppression** | ✅ (froggeric v19) | ✅ | ✅ |
 | **Quoted `</think>` bug fix** |  ✅  | ✅ (v21.1) | — |
 | **Vision / tool dedup** | ✅ | ✅ | ✅ |
+
+> **Note:** The `from_json` un-packing branch only fires for string args shaped like a JSON object (`{...}`); all other string args emit verbatim. This keeps the feature (including double-encoded args) while preventing render crashes on non-JSON inputs across all transformers/vLLM stacks.
 
 **Heritage:** Self-healing think + JSON un-packing originated from allanchan339.
 Empty-think suppression from froggeric v19, quoted think-close detection from v21.3.
@@ -91,7 +93,6 @@ A battle-tested bash script that wraps `vllm serve` with:
 - **Stale process cleanup** — detects leftover vLLM/worker processes from crashed runs, terminates them gracefully (SIGTERM → SIGKILL), and releases GPU VRAM
 - **Automatic GPU detection** — counts available GPUs via `nvidia-smi` to set tensor-parallel size automatically (override with `--tp N`)
 - **NVIDIA .so injection** — automatically adds all CUDA library `.so` directories from your venv to `LD_LIBRARY_PATH` (fixes the common "libcudnn.so not found" class of errors)
-- **LMCache support** — optional CPU offloading of KV-cache via the `--lmcache` flag
 - **Pluggable chat template** — defaults to the bundled `qwen36-chat-Pajito-optimized.jinja`, but accepts any `.jinja` file via `--chat-template`
 - **Non-interactive mode** — use `--yes` / `-y` with `--model NAME` to script it in automation
 - **Dry-run mode** — use `--dry-run` to print the exact `vllm serve` command without launching
@@ -172,8 +173,6 @@ If no venv is found, the script attempts to use whatever `vllm` is on `PATH`.
 --no-prefix-cache      Disable prefix caching
 --no-chunked-prefill Disable chunked prefill
 --enforce-eager       Disable torch.compile
---lmcache             Enable LMCache CPU offloading
---lmcache-config FILE LMCache config YAML
 --cache-dir DIR       Cache directory (default: ~/.cache/vllm-launcher)
 --yes / -y            Accept all defaults, run non-interactively
 --dry-run             Print the vllm command without launching
