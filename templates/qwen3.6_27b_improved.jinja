@@ -27,7 +27,7 @@
         {%- endfor -%}
     {%- elif arguments is string -%}
         {%- set trimmed_arguments = arguments | trim -%}
-        {%- if trimmed_arguments -%}
+        {%- if trimmed_arguments and trimmed_arguments.startswith('{') and trimmed_arguments.endswith('}') -%}
             {%- set parsed = trimmed_arguments | from_json -%}
             {%- if parsed is mapping -%}
                 {%- for args_name, args_value in parsed | items -%}
@@ -38,6 +38,11 @@
                 {%- if not trimmed_arguments.endswith('\n') -%}
                     {{- '\n' -}}
                 {%- endif -%}
+            {%- endif -%}
+        {%- elif trimmed_arguments -%}
+            {{- trimmed_arguments -}}
+            {%- if not trimmed_arguments.endswith('\n') -%}
+                {{- '\n' -}}
             {%- endif -%}
         {%- endif -%}
     {%- else -%}

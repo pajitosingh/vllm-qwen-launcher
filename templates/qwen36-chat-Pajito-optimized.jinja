@@ -9,7 +9,7 @@
    - Toggled via API chat_template_kwargs (enable_thinking=false safe)
    ========================= #}
 
-{%- set template_version = "qwen3.6-final-v5" %}
+{%- set template_version = "qwen3.6-final-v6" %}
 {%- set image_count = namespace(value=0) %}
 {%- set video_count = namespace(value=0) %}
 {%- set add_vision_id = add_vision_id if add_vision_id is defined else false %}
@@ -269,9 +269,13 @@ Reminder:
                             {{- '\n</parameter>\n' }}
                         {%- endfor %}
                     {%- elif tc.arguments is string and tc.arguments %}
-                        {# --- JSON String Parser: handles Zoo Code double-stringified JSON --- #}
+                        {# --- JSON String Parser: handles Zoo Code double-stringified JSON ---
+                           NOTE: from_json crashes the whole template render (→ 400/500) if the
+                           string is not valid JSON. Only attempt parsing for strings that
+                           actually look like a JSON object; everything else emits the raw
+                           argument verbatim (matches frogerric behaviour, fixes Tess/CC 500s). #}
                         {%- set _trimmed_args = tc.arguments | trim %}
-                        {%- if _trimmed_args %}
+                        {%- if _trimmed_args and _trimmed_args.startswith('{') and _trimmed_args.endswith('}') %}
                             {%- set _parsed = _trimmed_args | from_json %}
                             {%- if _parsed is mapping %}
                                 {%- for args_name, args_value in _parsed.items() %}
@@ -291,6 +295,8 @@ Reminder:
                             {%- else %}
                                 {{- _trimmed_args }}
                             {%- endif %}
+                        {%- elif _trimmed_args %}
+                            {{- _trimmed_args }}
                         {%- endif %}
                     {%- endif %}
                 {%- endif %}

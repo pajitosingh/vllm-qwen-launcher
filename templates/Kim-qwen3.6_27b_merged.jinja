@@ -267,9 +267,11 @@ Reminder:
                             {{- '\n</parameter>\n' }}
                         {%- endfor %}
                     {%- elif tc.arguments is string and tc.arguments %}
-                        {# --- JSON String Parser: handles Zoo Code double-stringified JSON --- #}
+                        {# --- JSON String Parser: handles Zoo Code double-stringified JSON ---
+                           Guarded: from_json aborts the render on non-JSON strings. Only
+                           attempt parse when the string looks like a JSON object. #}
                         {%- set _trimmed_args = tc.arguments | trim %}
-                        {%- if _trimmed_args %}
+                        {%- if _trimmed_args and _trimmed_args.startswith('{') and _trimmed_args.endswith('}') %}
                             {%- set _parsed = _trimmed_args | from_json %}
                             {%- if _parsed is mapping %}
                                 {%- for args_name, args_value in _parsed.items() %}
@@ -289,6 +291,8 @@ Reminder:
                             {%- else %}
                                 {{- _trimmed_args }}
                             {%- endif %}
+                        {%- elif _trimmed_args %}
+                            {{- _trimmed_args }}
                         {%- endif %}
                     {%- endif %}
                 {%- endif %}
